@@ -8,8 +8,22 @@
 ╠══════════════════════════════════════════════════════════════════════════╣
 
   FILE:    Single self-contained HTML5 game. No build step.
-           Current release: DRDD_Trouble_in_Dipe_City_v23_13_0.html (notes in
+           Current release: DRDD_Trouble_in_Dipe_City_v23_15_0.html (notes in
            DRDD_DevLog.md).
+           V23.15.0 — arena "a bit brighter" (painter 0.42->0.48 avg, rig
+           4.20->4.90; predicted rock 26->35%, rock2 17->24%). Joe L rung 3:
+           explicit rotX:0 (the ±90 pair proved him delivered upright; the
+           manifest's rotX test is now null-aware so zero counts as
+           explicit). Level 2 materials measured honestly: 202 -> 184 by
+           deduping the only true static duplicates (lava-ball cores +
+           drips); the remaining 147 animate per-instance and are correct.
+           V23.14.0 — THE BLACK ARENA, SOLVED BY ITS OWN PROBE: colour
+           management converts texture AND tint sRGB->linear before they
+           multiply, so the rock reflected 0.4% of its light — 2.04 of rig
+           was arithmetically black. Rig raised to Level 2's effective
+           illumination: 1.35+1.90+0.95 = 4.20 with a lighter hemisphere
+           sky. Joe L's head: explicit rotX:-90 in the manifest (auto
+           stand-up guessed +90 and planted his face).
            V23.13.0 — RENDER-TRUTH INSTRUMENTS for the black arena: the
            diagnostics report header now stamps BUILD + DEVICE (two reports
            arrived from two machines with no way to tell which file made
@@ -6025,9 +6039,9 @@ window.__fatalNotice=function(title,body){
      Without it, uploading a new Factory.js while index.html looked unchanged
      would leave a phone running last week's characters with no way to tell.
      BUMP THESE WITH GAME_VERSION EVERY RELEASE — menu_check.js asserts it. -->
-<script src="AssetManager.js?v=23.13.0"></script>
-<script src="Factory.js?v=23.13.0"></script>
-<script src="Engine.js?v=23.13.0"></script>
+<script src="AssetManager.js?v=23.15.0"></script>
+<script src="Factory.js?v=23.15.0"></script>
+<script src="Engine.js?v=23.15.0"></script>
 <!-- v23.1.0 — FALLBACK, and it must be a DIFFERENT HOST.
      This block used to re-request the byte-identical jsdelivr URL the tag above
      had just failed on, which can only ever help a one-off transient blip: if
@@ -14128,6 +14142,15 @@ function buildLevel2(){
   // means they genuinely cross the walkway height instead of bobbing under it.
   (function(){
     window.level2LavaBalls = [];
+  // v23.15.0 — SHARED, and safe to share: colour-only, never written after
+  // creation (verified against the per-frame block before hoisting). The arc,
+  // spark and lamp materials nearby are deliberately NOT shared — every one
+  // animates independently per frame, and sharing them is the lockstep trap
+  // (measured composition: of Level 2's 202 materials, 131 are the arc
+  // system's per-instance fades and 16 are the lamps — legitimate; ~25 were
+  // true static duplicates, of which these two account for 20).
+  const _l2BallCoreMat = new THREE.MeshBasicMaterial({ color:0xffe27a });
+  const _l2DripMat = new THREE.MeshBasicMaterial({ color:0xff8a1e });
     const sites = [
       { x: 0, z: -24.75, phase: 0            },  // pit 1, gap  5.5
       { x: 0, z: -74.25, phase: Math.PI*0.7  },  // pit 2, gap  6.0
@@ -14149,14 +14172,13 @@ function buildLevel2(){
           emissive:new THREE.Color(0xff4a08), emissiveIntensity:1.1 }));
       shell.position.set(s.x, LAVA_Y, s.z); track(shell);
       // Core, drawn slightly smaller and fully bright — this is what blooms.
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.46, 9, 7),
-        new THREE.MeshBasicMaterial({ color:0xffe27a }));
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.46, 9, 7), _l2BallCoreMat);
       core.position.copy(shell.position); track(core);
       // Molten droplets shed off the back of the rise.
       const drops = [];
       for(let di=0; di<3; di++){
         const d = new THREE.Mesh(new THREE.SphereGeometry(0.13 + Math.random()*0.10, 6, 5),
-          new THREE.MeshBasicMaterial({ color:0xff8a1e }));
+          _l2DripMat);
         d.position.set(s.x, LAVA_Y, s.z); track(d);
         drops.push({ m:d, off:0.55 + di*0.42, sx:(Math.random()-0.5)*0.5, sz:(Math.random()-0.5)*0.5 });
       }
@@ -15087,10 +15109,18 @@ var _L3_VOLC_L2NAMES = {
 // is what took those from 580 materials to 53.
 function _l3VolcKit(){
   var rockTex = makeTex(256,256,function(ctx,W,H){
-    ctx.fillStyle='#38332f'; ctx.fillRect(0,0,W,H);
+    // v23.14.0 — base lifted #38332f -> #6e665e and grain 74/68/62 -> 126/118/110.
+    // Colour management converts this texture AND the material tint sRGB->linear
+    // before multiplying: at the old ~0.21 average the walls reflected 0.4% of
+    // incident light and were arithmetically black under ANY sane rig (probe-
+    // verified on device, build v23.13.0). ~0.45 average x the same tints gives
+    // rock ~29% / rock2 ~21% on screen under the 4.20 rig — visible dark rock.
+    // This painter is Level 3's OWN; Level 2's material literals and
+    // volcanic_check.js are untouched.
+    ctx.fillStyle='#7d756c'; ctx.fillRect(0,0,W,H);  // v23.15.0 'a bit brighter' (owner)
     for(var i=0;i<900;i++){
       var v=Math.floor(Math.random()*52)-26;
-      ctx.fillStyle='rgb('+(74+v)+','+(68+v)+','+(62+v)+')';
+      ctx.fillStyle='rgb('+(143+v)+','+(135+v)+','+(127+v)+')';
       var s=1+Math.random()*5;
       ctx.fillRect(Math.random()*W,Math.random()*H,s,s);
     }
@@ -15300,9 +15330,31 @@ function buildLevel3(){
   // upward-facing floor is a minority of the frame. The trade is real though,
   // and it is the first thing to wind back if the rock starts looking washed
   // out rather than dark: these three numbers, in this order.
-  var _l3amb =new THREE.AmbientLight(0xff8a55,0.62);            add(_l3amb);
-  var _l3hemi=new THREE.HemisphereLight(0x4a1d10,0xff5010,1.00); add(_l3hemi);
-  var _l3key =new THREE.DirectionalLight(0xffc08a,0.42); _l3key.position.set(14,30,10); add(_l3key);
+  // v23.14.0 — WHY 2.04 RENDERED BLACK, WITH THE ARITHMETIC THIS TIME.
+  // The render-truth probe (22:12:11, Chrome/Mac, build v23.13.0) proved the
+  // textures paint correctly (rock avg 58,52,48), every map is real, and the
+  // rig was on — and the room was STILL black. The missing piece is r152+
+  // colour management: the renderer converts BOTH the texture pixels AND the
+  // material colour from sRGB to linear before multiplying them. rock2:
+  // texture 0.23 sRGB -> 0.045 linear, colour 0.34 sRGB -> 0.094 linear,
+  // product 0.004 — the walls reflect 0.4% of the light that hits them.
+  // 2.04 of light x 0.004 goes through ACES to ~7% grey: black on any screen.
+  // Level 2 uses the SAME materials and reads fine because it sits under the
+  // full main rig (~5.5 effective). The old "keep the sum near 1.0" caution
+  // was written before colour management and does not describe textured
+  // surfaces under it. Target here = Level 2's arithmetic, which the owner
+  // likes: 1.35 + 1.90 + 0.95 = 4.20, with a lighter hemisphere sky colour
+  // (0x4a1d10 contributed almost nothing at luma 0.11). Predicted wall shade
+  // ~20% sRGB — dark volcanic rock with lava accents, nowhere near washout.
+  // History: 0.38+0.70+0.32 = 1.40 -> 0.62+1.00+0.42 = 2.04 (both black,
+  // for the reason above) -> 1.35+1.90+0.95 = 4.20.
+  // v23.15.0 — owner, with the room finally rendering: "a bit brighter."
+  // Both dials nudged: painter 0.42 -> 0.48 average, rig 4.20 -> 4.90.
+  // Predicted screens move rock 26->35%, rock2 17->26%, deck 22->25%.
+  // History: 1.40 -> 2.04 (both arithmetically black) -> 4.20 -> 4.90.
+  var _l3amb =new THREE.AmbientLight(0xffb894,1.55);            add(_l3amb);
+  var _l3hemi=new THREE.HemisphereLight(0x6a3a28,0xff5a1a,2.20); add(_l3hemi);
+  var _l3key =new THREE.DirectionalLight(0xffcf9e,1.15); _l3key.position.set(14,30,10); add(_l3key);
   // v23.13.0 — the rig half of the render-truth probe (see the kit probe above).
   try{
     if(window.Assets&&Assets.diag){
@@ -16077,7 +16129,7 @@ function updateLevel3(dt){
 // Shown on the level-select screen. ONE place to edit per release, and the
 // only reliable way to tell on a phone which of the two identical-looking
 // HTML files is actually open.
-var GAME_VERSION = 'v23.13.0';
+var GAME_VERSION = 'v23.15.0';
 (function(){
   function stamp(){
     var e=document.getElementById('build-stamp');
