@@ -1,2 +1,2 @@
-# DRDD_TIDC_v21_0_0
-DRDD Trouble In Dipe City v21_0_0
+# DRDD_TIDC_v24_15_0
+DRDD Trouble In Dipe City v24_15_0
